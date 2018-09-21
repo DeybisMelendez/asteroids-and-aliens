@@ -1,0 +1,415 @@
+[gd_scene load_steps=19 format=2]
+
+[ext_resource path="res://jugador/9.png" type="Texture" id=1]
+[ext_resource path="res://control/izq2.png" type="Texture" id=2]
+[ext_resource path="res://control/izq.png" type="Texture" id=3]
+[ext_resource path="res://control/der2.png" type="Texture" id=4]
+[ext_resource path="res://control/der.png" type="Texture" id=5]
+[ext_resource path="res://control/acelerar2.png" type="Texture" id=6]
+[ext_resource path="res://control/acelerar.png" type="Texture" id=7]
+[ext_resource path="res://control/disparar2.png" type="Texture" id=8]
+[ext_resource path="res://control/disparar.png" type="Texture" id=9]
+[ext_resource path="res://control/pausa.png" type="Texture" id=10]
+[ext_resource path="res://jugador/fuego.tscn" type="PackedScene" id=11]
+[ext_resource path="res://jugador/fuego2.tscn" type="PackedScene" id=12]
+[ext_resource path="res://jugador/fuego2.tres" type="Material" id=13]
+[ext_resource path="res://enemigo/explosion.tres" type="Texture" id=14]
+[ext_resource path="res://particulas/whitelight.png" type="Texture" id=15]
+
+[sub_resource type="GDScript" id=1]
+
+script/source = "extends KinematicBody2D
+
+var rotacion = 0.0
+var direccion = Vector2()
+var velocidad = 0
+var aceleracion = 300
+var velocidadMax = 300
+var aceleracionRotacion = 300
+var movimiento = Vector2()
+var bala = preload (\"res://laser/bala.tscn\")
+var skin = \"res://jugador/\" + str(general.skinNave) + \".png\"
+var nave = load(skin)
+var escudo = preload(\"res://jugador/escudo.tscn\")
+var morir = false
+var pos = Vector2()
+var colision = null
+var vida = 3
+var perseguir = true
+onready var fuego = $fuego
+onready var izq = $fuegoIzq
+onready var der = $fuegoDer
+var costoLaser = 10
+
+var nivelLaser = 1
+
+func _ready():
+
+	$Sprite.set_texture(nave)
+	fuego.set_emitting(false)
+	izq.set_emitting(false)
+	der.set_emitting(false)
+	global.alienStop()
+	global.vida = vida
+
+func _physics_process(delta):
+	
+	rotation_degrees = rad2deg(rotacion)
+	colision = move_and_collide(movimiento * delta)
+	if !morir:
+		if colision:
+			colisiona()
+		if Input.is_action_just_pressed(\"movDer\"):
+			if global.energia >= 30 * delta:
+				izq.set_emitting(true)
+				global.avanzarPlay()
+		elif Input.is_action_pressed(\"movDer\"):
+			rotacion += deg2rad(aceleracionRotacion) * delta
+		elif Input.is_action_just_released(\"movDer\"):
+			izq.set_emitting(false)
+			if !Input.is_action_pressed(\"movArr\") and !Input.is_action_pressed(\"movIzq\"):
+				global.avanzarStop()
+		elif Input.is_action_just_pressed(\"movIzq\"):
+			der.set_emitting(true)
+			global.avanzarPlay()
+		elif Input.is_action_pressed(\"movIzq\"):
+			rotacion -= deg2rad(aceleracionRotacion) * delta
+		elif Input.is_action_just_released(\"movIzq\"):
+			der.set_emitting(false)
+			if !Input.is_action_pressed(\"movArr\") and !Input.is_action_pressed(\"movDer\"):
+				global.avanzarStop()
+		
+		if Input.is_action_just_pressed(\"movArr\"):
+			fuego.set_emitting(true)
+			global.avanzarPlay()
+		elif Input.is_action_pressed(\"movArr\"):
+			direccion = Vector2(cos(rotacion-PI/2),sin(rotacion-PI/2))
+			movimiento += aceleracion * direccion * delta
+			movimiento.x = clamp(movimiento.x,-velocidadMax,velocidadMax)
+			movimiento.y = clamp(movimiento.y,-velocidadMax,velocidadMax)
+		elif Input.is_action_just_released(\"movArr\"):
+			fuego.set_emitting(false)
+			if !Input.is_action_pressed(\"movIzq\") and !Input.is_action_pressed(\"movDer\"):
+				global.avanzarStop()
+		
+		if Input.is_action_just_pressed(\"disparar\"):
+			#costoLaser = 10 * nivelLaser
+			global.energia -= costoLaser
+			if global.energia >= costoLaser:
+				match nivelLaser:
+					1:
+						var nuevaBala = bala.instance()
+						nuevaBala.global_position = $Position2D.global_position
+						nuevaBala.angulo = rad2deg(rotacion)
+						nuevaBala.color = nivelLaser
+						get_parent().add_child(nuevaBala)
+					2:
+						for x in [5,-5]:
+							var nuevaBala = bala.instance()
+							nuevaBala.global_position = $Position2D.global_position
+							nuevaBala.angulo = rad2deg(rotacion) + x
+							nuevaBala.color = nivelLaser
+							get_parent().add_child(nuevaBala)
+					3:
+						for x in [10,0,-10]:
+							var nuevaBala = bala.instance()
+							nuevaBala.global_position = $Position2D.global_position
+							nuevaBala.angulo = rad2deg(rotacion) + x
+							nuevaBala.color = nivelLaser
+							get_parent().add_child(nuevaBala)
+					4:
+						for x in [15,5,-5,-15]:
+							var nuevaBala = bala.instance()
+							nuevaBala.global_position = $Position2D.global_position
+							nuevaBala.angulo = rad2deg(rotacion) + x
+							nuevaBala.color = nivelLaser
+							get_parent().add_child(nuevaBala)
+
+func animacionPerder():
+	nivelLaser = 1
+	morir = true
+	$colision.disabled = true
+	global.explosion2()
+	global.avanzarStop()
+	fuego.set_emitting(false)
+	izq.set_emitting(false)
+	der.set_emitting(false)
+	$Sprite.hide()
+	rotacion = 0
+	movimiento = Vector2(0,0)
+	$Particles2D.set_emitting(true)
+
+func perderVida():
+	$respawn.start()
+	yield($respawn,\"timeout\")
+	$Sprite.self_modulate = Color(1,1,1,0.5)
+	morir = false
+	perseguir = false
+	$Sprite.show()
+	$respawn.start()
+	yield($respawn,\"timeout\")
+	$colision.disabled = false
+	$Sprite.self_modulate = Color(1,1,1,1)
+	perseguir = true
+
+func crearEscudo():
+	print(\"crear escudo\")
+	$colision.disabled = true
+	var nuevoEscudo = escudo.instance()
+	add_child(nuevoEscudo)
+
+func _on_tiempoPoder_timeout():
+	nivelLaser = 1
+
+func colisiona():
+	animacionPerder()
+	if global.vida <= 0:
+		global.avanzarStop()
+		get_parent().final()
+		perseguir = false
+		$touch.queue_free()
+	else:
+		morir = true
+		perseguir = false
+		global.vida -= 1
+		perderVida()"
+
+[sub_resource type="ConvexPolygonShape2D" id=2]
+
+custom_solver_bias = 0.0
+points = PoolVector2Array( 0, -40, 50, 25, -50, 25 )
+
+[sub_resource type="ParticlesMaterial" id=3]
+
+render_priority = 0
+trail_divisor = 1
+emission_shape = 0
+flag_align_y = false
+flag_rotate_y = false
+flag_disable_z = true
+spread = 180.0
+flatness = 0.0
+gravity = Vector3( 0, 0, 0 )
+initial_velocity = 350.0
+initial_velocity_random = 1.0
+angular_velocity = 0.0
+angular_velocity_random = 0.0
+orbit_velocity = 0.0
+orbit_velocity_random = 0.0
+linear_accel = 0.0
+linear_accel_random = 0.0
+radial_accel = 0.0
+radial_accel_random = 0.0
+tangential_accel = 0.0
+tangential_accel_random = 0.0
+damping = 0.0
+damping_random = 0.0
+angle = 0.0
+angle_random = 0.0
+scale = 1.0
+scale_random = 0.0
+color_ramp = ExtResource( 14 )
+hue_variation = 0.0
+hue_variation_random = 0.0
+anim_speed = 0.0
+anim_speed_random = 0.0
+anim_offset = 0.0
+anim_offset_random = 0.0
+anim_loop = false
+_sections_unfolded = [ "Color", "Gravity", "Initial Velocity", "Scale", "Spread" ]
+
+[node name="jugador" type="KinematicBody2D" index="0" groups=[
+"jugador",
+]]
+
+input_pickable = false
+collision_layer = 1
+collision_mask = 1
+collision/safe_margin = 0.001
+script = SubResource( 1 )
+_sections_unfolded = [ "Transform", "Visibility", "Z Index", "collision" ]
+
+[node name="Sprite" type="Sprite" parent="." index="0"]
+
+texture = ExtResource( 1 )
+_sections_unfolded = [ "Visibility" ]
+
+[node name="colision" type="CollisionShape2D" parent="." index="1"]
+
+shape = SubResource( 2 )
+
+[node name="Position2D" type="Position2D" parent="." index="2"]
+
+position = Vector2( 0, -45 )
+_sections_unfolded = [ "Transform" ]
+
+[node name="Camera2D" type="Camera2D" parent="." index="3"]
+
+anchor_mode = 1
+rotating = false
+current = true
+zoom = Vector2( 1, 1 )
+limit_left = -10000000
+limit_top = -10000000
+limit_right = 10000000
+limit_bottom = 10000000
+limit_smoothed = false
+drag_margin_h_enabled = false
+drag_margin_v_enabled = false
+smoothing_enabled = false
+smoothing_speed = 5.0
+offset_v = 0.0
+offset_h = 0.0
+drag_margin_left = 0.2
+drag_margin_top = 0.2
+drag_margin_right = 0.2
+drag_margin_bottom = 0.2
+editor_draw_screen = true
+editor_draw_limits = false
+editor_draw_drag_margin = false
+_sections_unfolded = [ "Drag Margin", "Offset", "Smoothing", "Transform" ]
+
+[node name="touch" type="CanvasLayer" parent="." index="4"]
+
+editor/display_folded = true
+layer = 1
+offset = Vector2( 0, 0 )
+rotation = 0.0
+scale = Vector2( 1, 1 )
+transform = Transform2D( 1, 0, 0, 1, 0, 0 )
+
+[node name="movIzq" type="TouchScreenButton" parent="touch" index="0"]
+
+position = Vector2( 70, 500 )
+scale = Vector2( 2, 2 )
+normal = ExtResource( 2 )
+pressed = ExtResource( 3 )
+bitmask = null
+shape = null
+shape_centered = true
+shape_visible = true
+passby_press = false
+action = "movIzq"
+visibility_mode = 1
+_sections_unfolded = [ "Transform", "Visibility" ]
+
+[node name="movDer" type="TouchScreenButton" parent="touch" index="1"]
+
+position = Vector2( 270, 500 )
+scale = Vector2( 2, 2 )
+normal = ExtResource( 4 )
+pressed = ExtResource( 5 )
+bitmask = null
+shape = null
+shape_centered = true
+shape_visible = true
+passby_press = false
+action = "movDer"
+visibility_mode = 1
+_sections_unfolded = [ "Transform" ]
+
+[node name="acelerar" type="TouchScreenButton" parent="touch" index="2"]
+
+position = Vector2( 850, 500 )
+scale = Vector2( 2, 2 )
+normal = ExtResource( 6 )
+pressed = ExtResource( 7 )
+bitmask = null
+shape = null
+shape_centered = true
+shape_visible = true
+passby_press = false
+action = "movArr"
+visibility_mode = 1
+_sections_unfolded = [ "Transform" ]
+
+[node name="disparar" type="TouchScreenButton" parent="touch" index="3"]
+
+position = Vector2( 1050, 500 )
+scale = Vector2( 2, 2 )
+normal = ExtResource( 8 )
+pressed = ExtResource( 9 )
+bitmask = null
+shape = null
+shape_centered = true
+shape_visible = true
+passby_press = false
+action = "disparar"
+visibility_mode = 1
+_sections_unfolded = [ "Transform" ]
+
+[node name="pausa" type="TouchScreenButton" parent="touch" index="4"]
+
+position = Vector2( 1110, 50 )
+scale = Vector2( 2, 2 )
+normal = ExtResource( 10 )
+pressed = null
+bitmask = null
+shape = null
+shape_centered = true
+shape_visible = true
+passby_press = false
+action = "pausa"
+visibility_mode = 1
+_sections_unfolded = [ "Transform" ]
+
+[node name="respawn" type="Timer" parent="." index="5"]
+
+process_mode = 1
+wait_time = 2.0
+one_shot = true
+autostart = false
+
+[node name="fuego" parent="." index="6" instance=ExtResource( 11 )]
+
+emitting = false
+amount = 32
+
+[node name="fuegoDer" parent="." index="7" instance=ExtResource( 12 )]
+
+position = Vector2( 30, 30 )
+emitting = false
+amount = 128
+speed_scale = 0.5
+process_material = ExtResource( 13 )
+
+[node name="fuegoIzq" parent="." index="8" instance=ExtResource( 12 )]
+
+position = Vector2( -31, 30 )
+emitting = false
+amount = 128
+speed_scale = 0.5
+process_material = ExtResource( 13 )
+
+[node name="Particles2D" type="Particles2D" parent="." index="9"]
+
+emitting = false
+amount = 64
+lifetime = 1.0
+one_shot = true
+preprocess = 0.0
+speed_scale = 1.0
+explosiveness = 1.0
+randomness = 1.0
+fixed_fps = 0
+fract_delta = true
+visibility_rect = Rect2( -100, -100, 200, 200 )
+local_coords = true
+draw_order = 0
+process_material = SubResource( 3 )
+texture = ExtResource( 15 )
+normal_map = null
+h_frames = 1
+v_frames = 1
+_sections_unfolded = [ "Process Material", "Textures", "Time" ]
+
+[node name="tiempoPoder" type="Timer" parent="." index="10"]
+
+process_mode = 1
+wait_time = 10.0
+one_shot = true
+autostart = false
+
+[connection signal="timeout" from="tiempoPoder" to="." method="_on_tiempoPoder_timeout"]
+
+

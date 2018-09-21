@@ -1,0 +1,101 @@
+[gd_scene load_steps=5 format=2]
+
+[ext_resource path="res://enemigo/9.png" type="Texture" id=1]
+[ext_resource path="res://jugador/fuego.tscn" type="PackedScene" id=2]
+
+[sub_resource type="GDScript" id=1]
+
+script/source = "extends KinematicBody2D
+
+var vel = Vector2()
+var velMax = randi()%100+100
+var movimiento = Vector2()
+var rotacion = 0
+var pos = Vector2()
+var No = randi()%20+5
+var sprite = load (\"res://enemigo/\"+str(No)+\".png\")
+var laser = load (\"res://laser/balaEnemigo.tscn\")
+var colision = false
+var dir = Vector2()
+onready var jugador = get_parent().get_node(\"jugador\").global_position
+var visto = false
+
+func _ready():
+	$Sprite.set_texture(sprite)
+	movimiento = velMax * vel
+	global.alienPlay()
+
+
+func _physics_process(delta):
+	pos = global_position
+	jugador = get_parent().get_node(\"jugador\")
+	if jugador.perseguir:
+		rotacion = 90 + rad2deg(atan2(pos.y-jugador.global_position.y,pos.x-jugador.global_position.x))
+		dir = Vector2(jugador.global_position.x-pos.x,jugador.global_position.y-pos.y).normalized() * velMax
+		movimiento = move_and_slide(dir)
+		rotation_degrees = rotacion
+	else:
+		movimiento = move_and_slide(dir)
+		rotation_degrees = rotacion
+	if pos.x < get_parent().minX:
+		global_position.x = get_parent().maxX
+	elif pos.x > get_parent().maxX:
+		global_position.x = get_parent().minX
+	if pos.y < get_parent().minY:
+		global_position.y = get_parent().maxY
+	elif pos.y > get_parent().maxY:
+		global_position.y = get_parent().minY
+
+
+func _on_Timer_timeout():
+	if jugador.perseguir:
+		var nuevoDisparo = laser.instance()
+		nuevoDisparo.global_position = $Position2D.global_position
+		nuevoDisparo.angulo = rotacion
+		get_parent().add_child(nuevoDisparo)"
+
+[sub_resource type="CircleShape2D" id=2]
+
+custom_solver_bias = 0.0
+radius = 40.0
+
+[node name="KinematicBody2D" type="KinematicBody2D" index="0" groups=[
+"enemigo",
+"alien",
+]]
+
+input_pickable = false
+collision_layer = 1
+collision_mask = 1
+collision/safe_margin = 0.08
+script = SubResource( 1 )
+_sections_unfolded = [ "Transform" ]
+
+[node name="Sprite" type="Sprite" parent="." index="0"]
+
+texture = ExtResource( 1 )
+_sections_unfolded = [ "Transform" ]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." index="1"]
+
+shape = SubResource( 2 )
+
+[node name="fuego" parent="." index="2" instance=ExtResource( 2 )]
+
+position = Vector2( -1.75236e-06, -34 )
+
+[node name="Timer" type="Timer" parent="." index="3"]
+
+process_mode = 1
+wait_time = 2.0
+one_shot = false
+autostart = true
+
+[node name="Position2D" type="Position2D" parent="." index="4"]
+
+position = Vector2( 0, 40 )
+_sections_unfolded = [ "Transform" ]
+
+[connection signal="timeout" from="Timer" to="." method="_on_Timer_timeout"]
+
+

@@ -1,0 +1,7 @@
+[gd_resource type="ConvexPolygonShape2D" format=2]
+
+[resource]
+
+custom_solver_bias = 0.0
+points = PoolVector2Array( -21, 5, -15, -15, 8, -18, 21, -2, 7, 19, -7, 18 )
+

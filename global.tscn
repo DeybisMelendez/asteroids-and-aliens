@@ -1,0 +1,146 @@
+[gd_scene load_steps=11 format=2]
+
+[ext_resource path="res://sonidos/Boom.ogg" type="AudioStream" id=1]
+[ext_resource path="res://sonidos/sfx_zap.wav" type="AudioStream" id=2]
+[ext_resource path="res://sonidos/sfx_twoTone.wav" type="AudioStream" id=3]
+[ext_resource path="res://sonidos/sfx_laser1.ogg" type="AudioStream" id=4]
+[ext_resource path="res://sonidos/golpe.wav" type="AudioStream" id=5]
+[ext_resource path="res://sonidos/explosion.wav" type="AudioStream" id=6]
+[ext_resource path="res://sonidos/avanzar.wav" type="AudioStream" id=7]
+[ext_resource path="res://sonidos/alien.wav" type="AudioStream" id=8]
+[ext_resource path="res://sonidos/powerup.wav" type="AudioStream" id=9]
+
+[sub_resource type="GDScript" id=1]
+
+script/source = "extends CanvasLayer
+
+var vida = 3
+var bg = 0
+var energia = 0
+
+func _physics_process(delta):
+	energia += 15 * delta
+	energia = clamp(energia,0,100)
+
+func menuPlay():
+	$menu.play()
+
+func menu2Play():
+	$menu2.play()
+
+func laser():
+	$laser.play()
+
+func explosion():
+	$explosion.play()
+
+func explosion2():
+	$explosion2.play()
+
+func avanzarPlay():
+	if !$avanzar.is_playing():
+		$avanzar.play()
+
+func avanzarStop():
+	$avanzar.stop()
+
+func alienPlay():
+	$alien.play()
+
+func alienStop():
+	$alien.stop()
+
+func powerup():
+	$powerup.play()"
+
+[node name="global" type="CanvasLayer" index="0"]
+
+layer = 1
+offset = Vector2( 0, 0 )
+rotation = 0.0
+scale = Vector2( 1, 1 )
+transform = Transform2D( 1, 0, 0, 1, 0, 0 )
+script = SubResource( 1 )
+
+[node name="musica" type="AudioStreamPlayer" parent="." index="0"]
+
+stream = ExtResource( 1 )
+volume_db = -5.0
+pitch_scale = 1.0
+autoplay = true
+mix_target = 0
+bus = "Master"
+
+[node name="menu" type="AudioStreamPlayer" parent="." index="1"]
+
+stream = ExtResource( 2 )
+volume_db = 0.0
+pitch_scale = 1.0
+autoplay = false
+mix_target = 0
+bus = "Master"
+
+[node name="menu2" type="AudioStreamPlayer" parent="." index="2"]
+
+stream = ExtResource( 3 )
+volume_db = 0.0
+pitch_scale = 1.0
+autoplay = false
+mix_target = 0
+bus = "Master"
+
+[node name="laser" type="AudioStreamPlayer" parent="." index="3"]
+
+stream = ExtResource( 4 )
+volume_db = 0.0
+pitch_scale = 1.0
+autoplay = false
+mix_target = 0
+bus = "Master"
+
+[node name="explosion" type="AudioStreamPlayer" parent="." index="4"]
+
+stream = ExtResource( 5 )
+volume_db = 0.0
+pitch_scale = 1.0
+autoplay = false
+mix_target = 0
+bus = "Master"
+
+[node name="explosion2" type="AudioStreamPlayer" parent="." index="5"]
+
+stream = ExtResource( 6 )
+volume_db = 0.0
+pitch_scale = 1.0
+autoplay = false
+mix_target = 0
+bus = "Master"
+
+[node name="avanzar" type="AudioStreamPlayer" parent="." index="6"]
+
+stream = ExtResource( 7 )
+volume_db = -10.0
+pitch_scale = 1.0
+autoplay = false
+mix_target = 0
+bus = "Master"
+
+[node name="alien" type="AudioStreamPlayer" parent="." index="7"]
+
+stream = ExtResource( 8 )
+volume_db = -10.0
+pitch_scale = 1.0
+autoplay = false
+mix_target = 0
+bus = "Master"
+
+[node name="powerup" type="AudioStreamPlayer" parent="." index="8"]
+
+stream = ExtResource( 9 )
+volume_db = -10.0
+pitch_scale = 1.0
+autoplay = false
+mix_target = 0
+bus = "Master"
+
+

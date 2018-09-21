@@ -1,0 +1,293 @@
+[gd_scene load_steps=8 format=2]
+
+[ext_resource path="res://bg.tscn" type="PackedScene" id=1]
+[ext_resource path="res://estrellas.tscn" type="PackedScene" id=2]
+[ext_resource path="res://control.tscn" type="PackedScene" id=3]
+[ext_resource path="res://fuentes/kenney36.tres" type="DynamicFont" id=4]
+[ext_resource path="res://jugador/jugador2.tscn" type="PackedScene" id=5]
+
+[sub_resource type="GDScript" id=1]
+
+script/source = "extends Node2D
+
+var respawnLado = 0
+var respawn = Vector2()
+var posJugador = Vector2()
+
+var meteoroRandom = 0
+var meteoro = preload(\"res://meteoro/meteoro.tscn\")
+var meteoroTam = \"Grande\"
+var meteoroColor = \"Cafe\"
+
+var vel = Vector2()
+var angulo = 0
+
+var ufo = preload(\"res://enemigo/ufo.tscn\")
+var ufoRandom = 0
+var alien = preload(\"res://enemigo/alien.tscn\")
+var alienRandom = 0
+
+var contador = 0
+var ronda = 1
+var enemigosRonda = 1
+
+var terminarJuego = false
+var menuPerder = preload (\"res://menu/menuPerder.tscn\")
+var menuPausa = preload (\"res://menu/menuPausa.tscn\")
+var minX = 0
+var maxX = 1280
+var minY = 0
+var maxY = 720
+var enemigosActivos = 0
+var rondaTerminada = false
+
+func _ready():
+	general.score = 0
+	if get_tree().paused:
+		get_tree().paused = false
+
+func _physics_process(delta):
+	if !terminarJuego:
+		posJugador = $jugador.global_position
+		minX = posJugador.x - 690
+		maxX =  posJugador.x + 690
+		minY = posJugador.y - 410
+		maxY = posJugador.y + 410
+		enemigosActivos = get_tree().get_nodes_in_group(\"enemigo\").size()
+		if enemigosActivos <= 0 and !rondaTerminada:
+			rondaTerminada = true
+			nuevaRonda()
+
+func _on_Timer_timeout():
+	#Seleccionamos el lado de origen del enemigo
+	respawnLado = randi()%4
+	meteoroRandom = randi()%4+1
+	meteoroTam = \"Grande\"
+	if randi()%2 == 1:
+		meteoroColor = \"Gris\"
+	else:
+		meteoroColor = \"Cafe\"
+	contador += 1
+	match respawnLado:
+		0:
+			respawn = Vector2(minX,randi()%720+minY)
+			vel = Vector2(0,1)
+			#angulo = 0
+		1:
+			respawn = Vector2(maxX,randi()%720+minY)
+			vel = Vector2(0,-1)
+			#angulo = 180
+		2:
+			respawn = Vector2(randi()%1280+minX,minY)
+			vel = Vector2(1,0)
+			#angulo = 90
+		3:
+			respawn = Vector2(randi()%1280+minX,maxY)
+			vel = Vector2(-1,0)
+			#angulo = 270
+	#vel = Vector2(cos(angulo), sin(angulo))
+	
+	if alienRandom >= 3:
+		alienRandom = 0
+		crearAlien()
+	else:
+		alienRandom +=1
+	if ufoRandom >= 2:
+		ufoRandom = 0
+		crearUfo()
+	else:
+		ufoRandom += 1
+		crearMeteoro()
+	if contador >= enemigosRonda:
+		contador = 0
+		enemigosRonda += 2
+		$Timer.stop()
+		ronda += 1
+		rondaTerminada = false
+
+
+func crearMeteoro():
+	#Seleccionamos el meteoro a colocar
+	var nuevoMeteoro = meteoro.instance()
+	nuevoMeteoro.No = meteoroRandom
+	nuevoMeteoro.tam = meteoroTam
+	nuevoMeteoro.color = meteoroColor
+	nuevoMeteoro.global_position = respawn
+	nuevoMeteoro.vel = vel
+	nuevoMeteoro.add_to_group(meteoroTam)
+	add_child(nuevoMeteoro)
+
+func crearUfo():
+	var nuevoUfo = ufo.instance()
+	nuevoUfo.global_position = respawn
+	#nuevoUfo.vel = vel
+	add_child(nuevoUfo)
+
+func final():
+	terminarJuego = true
+	var nuevoMenu = menuPerder.instance()
+	$CanvasLayer.add_child(nuevoMenu)
+	$Timer.stop()
+	global.alienStop()
+
+func nuevaRonda():
+	$nuevaRonda.start()
+	$CanvasLayer/Label.set_text(\"wave \"+str(ronda))
+	$CanvasLayer/Label.show()
+	yield($nuevaRonda,\"timeout\")
+	$jugador/colision.disabled = false
+	$CanvasLayer/Label.hide()
+	$Timer.start()
+
+func _input(event):
+	if event.is_action_released(\"pausa\") and !terminarJuego:
+		if !get_tree().paused:
+			var nuevoMenu = menuPausa.instance()
+			$CanvasLayer.add_child(nuevoMenu)
+			get_tree().paused = true
+
+func eliminarTodo():
+	$CanvasLayer/anim.play(\"explosionGigante\")
+	global.explosion()
+	global.alienStop()
+	var eliminar = get_tree().get_nodes_in_group(\"enemigo\")
+	for i in eliminar:
+		i.queue_free()
+
+func crearAlien():
+	var nuevoAlien = alien.instance()
+	nuevoAlien.global_position = respawn
+	add_child(nuevoAlien)"
+
+[sub_resource type="Animation" id=2]
+
+resource_name = "explosionGigante"
+length = 0.3
+loop = false
+step = 0.1
+tracks/0/type = "value"
+tracks/0/path = NodePath("anim/ColorRect:self_modulate")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PoolRealArray( 0, 0.2, 0.3 ),
+"transitions": PoolRealArray( 1, 1, 1 ),
+"update": 0,
+"values": [ Color( 1, 1, 1, 0 ), Color( 1, 1, 1, 1 ), Color( 1, 1, 1, 0 ) ]
+}
+
+[node name="juego" type="Node2D"]
+
+script = SubResource( 1 )
+
+[node name="ParallaxBackground" type="ParallaxBackground" parent="." index="0"]
+
+layer = -1
+offset = Vector2( 0, 0 )
+rotation = 0.0
+scale = Vector2( 1, 1 )
+transform = Transform2D( 1, 0, 0, 1, 0, 0 )
+scroll_offset = Vector2( 0, 0 )
+scroll_base_offset = Vector2( 0, 0 )
+scroll_base_scale = Vector2( 1, 1 )
+scroll_limit_begin = Vector2( 0, 0 )
+scroll_limit_end = Vector2( 0, 0 )
+scroll_ignore_camera_zoom = true
+_sections_unfolded = [ "Scroll" ]
+
+[node name="ParallaxLayer" type="ParallaxLayer" parent="ParallaxBackground" index="0"]
+
+motion_scale = Vector2( 1, 1 )
+motion_offset = Vector2( 0, 0 )
+motion_mirroring = Vector2( 1280, 720 )
+_sections_unfolded = [ "Motion" ]
+
+[node name="bg" parent="ParallaxBackground/ParallaxLayer" index="0" instance=ExtResource( 1 )]
+
+[node name="Particles2D" parent="ParallaxBackground/ParallaxLayer" index="1" instance=ExtResource( 2 )]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="." index="1"]
+
+layer = 1
+offset = Vector2( 0, 0 )
+rotation = 0.0
+scale = Vector2( 1, 1 )
+transform = Transform2D( 1, 0, 0, 1, 0, 0 )
+
+[node name="anim" type="AnimationPlayer" parent="CanvasLayer" index="0"]
+
+root_node = NodePath("..")
+autoplay = ""
+playback_process_mode = 1
+playback_default_blend_time = 0.0
+playback_speed = 1.0
+anims/explosionGigante = SubResource( 2 )
+blend_times = [  ]
+
+[node name="ColorRect" type="ColorRect" parent="CanvasLayer/anim" index="0"]
+
+self_modulate = Color( 1, 1, 1, 0 )
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 0.0
+anchor_bottom = 0.0
+margin_right = 1280.0
+margin_bottom = 720.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 0
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 1
+color = Color( 1, 1, 1, 1 )
+_sections_unfolded = [ "Rect", "Visibility" ]
+
+[node name="control" parent="CanvasLayer" index="1" instance=ExtResource( 3 )]
+
+[node name="Label" type="Label" parent="CanvasLayer" index="2"]
+
+anchor_left = 0.5
+anchor_top = 0.0
+anchor_right = 0.5
+anchor_bottom = 0.0
+margin_left = -129.0
+margin_right = 129.0
+margin_bottom = 260.0
+rect_pivot_offset = Vector2( 0, 0 )
+rect_clip_content = false
+mouse_filter = 2
+mouse_default_cursor_shape = 0
+size_flags_horizontal = 1
+size_flags_vertical = 4
+custom_fonts/font = ExtResource( 4 )
+custom_colors/font_color = Color( 1, 1, 0.00390625, 1 )
+custom_colors/font_color_shadow = Color( 0, 0, 0, 1 )
+text = "wave 1"
+align = 1
+valign = 2
+percent_visible = 1.0
+lines_skipped = 0
+max_lines_visible = -1
+_sections_unfolded = [ "Margin", "custom_colors", "custom_constants", "custom_fonts" ]
+
+[node name="Timer" type="Timer" parent="." index="2"]
+
+process_mode = 1
+wait_time = 5.0
+one_shot = false
+autostart = false
+
+[node name="jugador" parent="." index="3" instance=ExtResource( 5 )]
+
+[node name="nuevaRonda" type="Timer" parent="." index="4"]
+
+process_mode = 1
+wait_time = 3.0
+one_shot = true
+autostart = false
+
+[connection signal="timeout" from="Timer" to="." method="_on_Timer_timeout"]
+
+

@@ -1,0 +1,159 @@
+[gd_scene load_steps=6 format=2]
+
+[ext_resource path="res://laser/balaEnemigo.tres" type="Material" id=1]
+[ext_resource path="res://particulas/whitelight.png" type="Texture" id=2]
+
+[sub_resource type="GDScript" id=1]
+
+script/source = "extends KinematicBody2D
+
+var dir = Vector2()
+var velocidad = 400
+var movimiento = Vector2()
+var angulo = 0
+#var angulo1 = 0
+#var angulo2 = 0
+var pos = Vector2()
+var color = 5
+var colisionado = false
+var explosion = preload(\"res://enemigo/explosion.tscn\")
+
+func _ready():
+	var nivel = load(\"res://laser/\" + str(color) + \".tres\")
+	$Particles2D.process_material.color_ramp = nivel
+	rotation_degrees = angulo
+	angulo += 90
+	angulo = deg2rad(angulo)
+	dir = Vector2(cos(angulo), sin(angulo))
+	global.laser()
+
+func _physics_process(delta):
+	movimiento = dir * velocidad
+	move_and_slide(movimiento)
+	pos = global_position
+	if pos.x < get_parent().minX or pos.x > get_parent().maxX or pos.y > get_parent().maxY or pos.y < get_parent().minY:
+		queue_free()
+	if get_parent().terminarJuego:
+		queue_free()
+
+func _on_Area2D_body_entered(body):
+	if body.is_in_group(\"jugador\"):
+		var particula = explosion.instance()
+		particula.global_position = pos
+		get_parent().add_child(particula)
+		body.colisiona()
+		queue_free()"
+
+[sub_resource type="CircleShape2D" id=2]
+
+custom_solver_bias = 0.0
+radius = 12.0
+
+[sub_resource type="CapsuleShape2D" id=3]
+
+custom_solver_bias = 0.0
+radius = 10.0
+height = 20.0
+
+[node name="bala" type="KinematicBody2D" groups=[
+"enemigo",
+]]
+
+pause_mode = 1
+z_index = -1
+input_pickable = true
+collision_layer = 1
+collision_mask = 1
+collision/safe_margin = 0.08
+script = SubResource( 1 )
+_sections_unfolded = [ "Pause", "Visibility", "Z Index" ]
+
+[node name="origen1" type="Position2D" parent="." index="0"]
+
+position = Vector2( -20, -35 )
+_sections_unfolded = [ "Transform" ]
+
+[node name="origen2" type="Position2D" parent="." index="1"]
+
+position = Vector2( 20, -35 )
+_sections_unfolded = [ "Transform" ]
+
+[node name="Timer" type="Timer" parent="." index="2"]
+
+process_mode = 1
+wait_time = 0.4
+one_shot = true
+autostart = false
+
+[node name="Particles2D" type="Particles2D" parent="." index="3"]
+
+rotation = -1.5708
+emitting = true
+amount = 16
+lifetime = 1.0
+one_shot = false
+preprocess = 0.0
+speed_scale = 2.0
+explosiveness = 0.0
+randomness = 0.0
+fixed_fps = 0
+fract_delta = true
+visibility_rect = Rect2( -100, -100, 200, 200 )
+local_coords = true
+draw_order = 0
+process_material = ExtResource( 1 )
+texture = ExtResource( 2 )
+normal_map = null
+h_frames = 1
+v_frames = 1
+_sections_unfolded = [ "Process Material", "Textures", "Time", "Transform", "Visibility" ]
+
+[node name="Light2D" type="Light2D" parent="Particles2D" index="0"]
+
+enabled = true
+editor_only = false
+texture = ExtResource( 2 )
+offset = Vector2( 0, 0 )
+texture_scale = 2.0
+color = Color( 1, 1, 1, 1 )
+energy = 0.5
+mode = 0
+range_height = 0.0
+range_z_min = -1024
+range_z_max = 1024
+range_layer_min = 0
+range_layer_max = 0
+range_item_cull_mask = 1
+shadow_enabled = false
+shadow_color = Color( 0, 0, 0, 0 )
+shadow_buffer_size = 2048
+shadow_gradient_length = 0.0
+shadow_filter = 0
+shadow_filter_smooth = 0.0
+shadow_item_cull_mask = 1
+
+[node name="Area2D" type="Area2D" parent="." index="4"]
+
+input_pickable = true
+gravity_vec = Vector2( 0, 1 )
+gravity = 98.0
+linear_damp = 0.1
+angular_damp = 1.0
+audio_bus_override = false
+audio_bus_name = "Master"
+_sections_unfolded = [ "Audio Bus" ]
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="Area2D" index="0"]
+
+position = Vector2( 0, 5 )
+shape = SubResource( 2 )
+_sections_unfolded = [ "Transform" ]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." index="5"]
+
+shape = SubResource( 3 )
+disabled = true
+
+[connection signal="body_entered" from="Area2D" to="." method="_on_Area2D_body_entered"]
+
+

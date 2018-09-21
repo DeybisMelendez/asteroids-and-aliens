@@ -1,0 +1,157 @@
+[gd_scene load_steps=5 format=2]
+
+[ext_resource path="res://particulas/whitelight.png" type="Texture" id=1]
+
+[sub_resource type="GDScript" id=1]
+
+script/source = "extends KinematicBody2D
+
+var dir = Vector2()
+var velocidad = 800
+var movimiento = Vector2()
+var angulo = 0
+var angulo1 = 0
+var angulo2 = 0
+var pos = Vector2()
+var color = 1
+var colisionado = false
+var explosion = preload(\"res://enemigo/explosion.tscn\")
+
+func _ready():
+	var nivel = load(\"res://laser/\" + str(color) + \".tres\")
+	$Particles2D.process_material.color_ramp = nivel
+	rotation_degrees = angulo
+	angulo -= 90
+	angulo = deg2rad(angulo)
+	dir = Vector2(cos(angulo), sin(angulo))
+	angulo1 = angulo + 50
+	angulo2 = angulo - 50
+	global.laser()
+
+func _physics_process(delta):
+	movimiento = dir * velocidad
+	move_and_slide(movimiento)
+	pos = global_position
+	if pos.x < get_parent().minX or pos.x > get_parent().maxX or pos.y > get_parent().maxY or pos.y < get_parent().minY:
+		queue_free()
+	if get_parent().terminarJuego:
+		queue_free()
+
+func _on_Area2D_body_entered(body):
+	if !body.is_in_group(\"jugador\") and !body.colision:
+		body.colision = true
+		if body.is_in_group(\"meteoro\"):
+			if body.is_in_group(\"Grande\"):
+				general.score += 10
+				get_parent().meteoroTam = \"Mediano\"
+				get_parent().meteoroColor = body.color
+				get_parent().meteoroRandom = randi()%2+1
+				get_parent().respawn = $origen1.global_position
+				get_parent().vel = Vector2(cos(angulo1), sin(angulo1))
+				get_parent().crearMeteoro()
+				get_parent().meteoroTam = \"Mediano\"
+				get_parent().respawn = $origen2.global_position
+				get_parent().vel = Vector2(cos(angulo2), sin(angulo2))
+				get_parent().crearMeteoro()
+			elif body.is_in_group(\"Mediano\"):
+				general.score += 20
+				get_parent().meteoroTam = \"Pequeno\"
+				get_parent().meteoroColor = body.color
+				get_parent().meteoroRandom = randi()%2+1
+				get_parent().respawn = $origen1.global_position
+				get_parent().vel = Vector2(cos(angulo1), sin(angulo1))
+				get_parent().crearMeteoro()
+				get_parent().meteoroTam = \"Pequeno\"
+				get_parent().respawn = $origen2.global_position
+				get_parent().vel = Vector2(cos(angulo2), sin(angulo2))
+				get_parent().crearMeteoro()
+			elif body.is_in_group(\"Pequeno\"):
+				general.score += 30
+		
+		elif body.is_in_group(\"ufo\"):
+			body.colocarPU()
+			general.score += 500
+			global.alienStop()
+			global.explosion()
+		elif body.is_in_group(\"alien\"):
+			general.score += 500
+			global.alienStop()
+			global.explosion()
+		var particula = explosion.instance()
+		particula.global_position = pos
+		get_parent().add_child(particula)
+		body.queue_free()
+		queue_free()"
+
+[sub_resource type="RectangleShape2D" id=2]
+
+custom_solver_bias = 0.0
+extents = Vector2( 4, 26 )
+
+[sub_resource type="CircleShape2D" id=6]
+
+custom_solver_bias = 0.0
+radius = 12.0
+
+[node name="bala" type="KinematicBody2D" index="0" groups=[
+"bala",
+]]
+
+pause_mode = 1
+z_index = -1
+input_pickable = true
+collision_layer = 1
+collision_mask = 1
+collision/safe_margin = 0.08
+script = SubResource( 1 )
+_sections_unfolded = [ "Pause", "Visibility", "Z Index" ]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="." index="0"]
+
+shape = SubResource( 2 )
+disabled = true
+
+[node name="origen1" type="Position2D" parent="." index="1"]
+
+position = Vector2( -20, -35 )
+_sections_unfolded = [ "Transform" ]
+
+[node name="origen2" type="Position2D" parent="." index="2"]
+
+position = Vector2( 20, -35 )
+_sections_unfolded = [ "Transform" ]
+
+[node name="Timer" type="Timer" parent="." index="3"]
+
+process_mode = 1
+wait_time = 0.4
+one_shot = true
+autostart = false
+
+[node name="Area2D" type="Area2D" parent="." index="4"]
+
+input_pickable = true
+gravity_vec = Vector2( 0, 1 )
+gravity = 98.0
+linear_damp = 0.1
+angular_damp = 1.0
+audio_bus_override = false
+audio_bus_name = "Master"
+_sections_unfolded = [ "Audio Bus" ]
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="Area2D" index="0"]
+
+position = Vector2( 0, 5 )
+shape = SubResource( 6 )
+_sections_unfolded = [ "Transform" ]
+
+[node name="Sprite" type="Sprite" parent="." index="5"]
+
+modulate = Color( 0, 1, 0.695312, 1 )
+position = Vector2( 0.631117, 4.89115 )
+texture = ExtResource( 1 )
+_sections_unfolded = [ "Visibility" ]
+
+[connection signal="body_entered" from="Area2D" to="." method="_on_Area2D_body_entered"]
+
+
